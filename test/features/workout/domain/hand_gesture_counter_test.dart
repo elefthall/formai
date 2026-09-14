@@ -36,6 +36,36 @@ void main() {
     expect(result.repCount, 0);
     expect(result.activeSide, HandSide.left);
   });
+
+  test('reports completion and duration for the first cycle', () {
+    final counter = HandGestureCounter(requiredStableFrames: 1);
+
+    counter.update(const [
+      HandGestureObservation(
+        side: HandSide.left,
+        pose: HandPose.open,
+        confidence: 0.9,
+      ),
+    ], timestampMs: 1000);
+    counter.update(const [
+      HandGestureObservation(
+        side: HandSide.left,
+        pose: HandPose.closed,
+        confidence: 0.9,
+      ),
+    ], timestampMs: 1600);
+    final result = counter.update(const [
+      HandGestureObservation(
+        side: HandSide.left,
+        pose: HandPose.open,
+        confidence: 0.9,
+      ),
+    ], timestampMs: 2200);
+
+    expect(result.repCount, 1);
+    expect(result.completedRep, isTrue);
+    expect(result.repDurationMs, 1200);
+  });
 }
 
 HandGestureResult _repeat(

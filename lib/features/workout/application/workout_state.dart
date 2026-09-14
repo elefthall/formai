@@ -1,7 +1,9 @@
 import 'package:camera/camera.dart';
 
-import '../domain/pose_frame.dart';
 import '../domain/hand_gesture_counter.dart';
+import '../domain/pose_frame.dart';
+import '../domain/squat_analyzer.dart';
+import '../domain/squat_state_machine.dart';
 
 enum WorkoutCameraPhase { idle, initializing, streaming, suspended, error }
 
@@ -16,6 +18,13 @@ class WorkoutState {
     this.handPose = HandPose.unknown,
     this.handRepPhase = HandRepPhase.waitingForOpen,
     this.activeHandSide,
+    this.handFeedback,
+    this.squatRepCount = 0,
+    this.squatPhase = SquatPhase.unknown,
+    this.squatPoseValid = false,
+    this.selectedSquatSide,
+    this.kneeAngleDeg,
+    this.squatFeedback,
   });
 
   const WorkoutState.idle() : this(phase: WorkoutCameraPhase.idle);
@@ -29,6 +38,13 @@ class WorkoutState {
   final HandPose handPose;
   final HandRepPhase handRepPhase;
   final HandSide? activeHandSide;
+  final String? handFeedback;
+  final int squatRepCount;
+  final SquatPhase squatPhase;
+  final bool squatPoseValid;
+  final SquatSide? selectedSquatSide;
+  final double? kneeAngleDeg;
+  final String? squatFeedback;
 
   bool get isStreaming => phase == WorkoutCameraPhase.streaming;
 
@@ -45,6 +61,17 @@ class WorkoutState {
     HandRepPhase? handRepPhase,
     HandSide? activeHandSide,
     bool clearActiveHandSide = false,
+    String? handFeedback,
+    bool clearHandFeedback = false,
+    int? squatRepCount,
+    SquatPhase? squatPhase,
+    bool? squatPoseValid,
+    SquatSide? selectedSquatSide,
+    bool clearSelectedSquatSide = false,
+    double? kneeAngleDeg,
+    bool clearKneeAngle = false,
+    String? squatFeedback,
+    bool clearSquatFeedback = false,
   }) {
     return WorkoutState(
       phase: phase ?? this.phase,
@@ -58,6 +85,19 @@ class WorkoutState {
       activeHandSide: clearActiveHandSide
           ? null
           : activeHandSide ?? this.activeHandSide,
+      handFeedback: clearHandFeedback
+          ? null
+          : handFeedback ?? this.handFeedback,
+      squatRepCount: squatRepCount ?? this.squatRepCount,
+      squatPhase: squatPhase ?? this.squatPhase,
+      squatPoseValid: squatPoseValid ?? this.squatPoseValid,
+      selectedSquatSide: clearSelectedSquatSide
+          ? null
+          : selectedSquatSide ?? this.selectedSquatSide,
+      kneeAngleDeg: clearKneeAngle ? null : kneeAngleDeg ?? this.kneeAngleDeg,
+      squatFeedback: clearSquatFeedback
+          ? null
+          : squatFeedback ?? this.squatFeedback,
     );
   }
 }

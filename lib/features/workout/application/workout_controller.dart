@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../infrastructure/camera_frame.dart';
 import '../domain/hand_gesture_counter.dart';
+import '../domain/squat_analyzer.dart';
+import '../domain/squat_state_machine.dart';
 import '../infrastructure/camera_service.dart';
 import '../infrastructure/hand_detection_service.dart';
 import '../infrastructure/ml_kit_pose_detection_service.dart';
@@ -44,6 +46,7 @@ class WorkoutController extends Notifier<WorkoutState> {
   late PoseDetectionService _poseService;
   late HandDetectionService _handService;
   final HandGestureCounter _handGestureCounter = HandGestureCounter();
+  final SquatAnalyzer _squatAnalyzer = SquatAnalyzer();
 
   @override
   WorkoutState build() {
@@ -103,6 +106,7 @@ class WorkoutController extends Notifier<WorkoutState> {
         state.phase == WorkoutCameraPhase.suspended) {
       return;
     }
+    _squatAnalyzer.cancelAttempt();
     await _releaseResources();
     if (!ref.mounted) return;
     state = const WorkoutState(phase: WorkoutCameraPhase.suspended);
@@ -121,6 +125,7 @@ class WorkoutController extends Notifier<WorkoutState> {
   }
 
   Future<void> _stop() async {
+    _squatAnalyzer.reset();
     await _releaseResources();
     if (!ref.mounted) return;
     state = const WorkoutState.idle();
@@ -146,7 +151,17 @@ class WorkoutController extends Notifier<WorkoutState> {
     try {
       final poseFrame = await _poseService.process(frame);
       final handObservations = await _handService.process(frame);
-      final gesture = _handGestureCounter.update(handObservations);
+      final gesture = _handGestureCounter.update(
+        handObservations,
+        timestampMs: frame.timestamp.millisecondsSinceEpoch,
+      );
+      final handFeedback = gesture.completedRep
+          ? _handFeedback(gesture.repCount, gesture.repDurationMs)
+          : null;
+      final squat = _squatAnalyzer.update(
+        poseFrame,
+        frame.timestamp.millisecondsSinceEpoch,
+      );
       if (!ref.mounted) return;
       if (state.phase != WorkoutCameraPhase.streaming) return;
       if (poseFrame == null) {
@@ -156,6 +171,14 @@ class WorkoutController extends Notifier<WorkoutState> {
           handPose: gesture.pose,
           handRepPhase: gesture.phase,
           activeHandSide: gesture.activeSide,
+          handFeedback: handFeedback,
+          squatRepCount: squat.repCount,
+          squatPhase: squat.phase,
+          squatPoseValid: squat.poseValid,
+          selectedSquatSide: squat.selectedSide,
+          kneeAngleDeg: squat.kneeAngleDeg,
+          clearKneeAngle: squat.kneeAngleDeg == null,
+          squatFeedback: squat.feedback,
         );
       } else {
         state = state.copyWith(
@@ -164,6 +187,14 @@ class WorkoutController extends Notifier<WorkoutState> {
           handPose: gesture.pose,
           handRepPhase: gesture.phase,
           activeHandSide: gesture.activeSide,
+          handFeedback: handFeedback,
+          squatRepCount: squat.repCount,
+          squatPhase: squat.phase,
+          squatPoseValid: squat.poseValid,
+          selectedSquatSide: squat.selectedSide,
+          kneeAngleDeg: squat.kneeAngleDeg,
+          clearKneeAngle: squat.kneeAngleDeg == null,
+          squatFeedback: squat.feedback,
         );
       }
     } catch (error, stackTrace) {
@@ -196,6 +227,32 @@ class WorkoutController extends Notifier<WorkoutState> {
       handPose: HandPose.unknown,
       handRepPhase: HandRepPhase.waitingForOpen,
       clearActiveHandSide: true,
+      clearHandFeedback: true,
+    );
+  }
+
+  String _handFeedback(int repCount, int? durationMs) {
+    final completion = repCount == 1
+        ? '첫 테스트 1회 완료! 카운터와 피드백이 정상 작동해요.'
+        : '테스트 $repCount회 완료!';
+    final tempo = switch (durationMs) {
+      null => '',
+      < 800 => ' 동작이 빠른 편이에요.',
+      > 3500 => ' 동작이 느린 편이에요.',
+      _ => ' 동작 속도가 안정적이에요.',
+    };
+    return '$completion$tempo';
+  }
+
+  void resetSquatReps() {
+    _squatAnalyzer.reset();
+    state = state.copyWith(
+      squatRepCount: 0,
+      squatPhase: SquatPhase.unknown,
+      squatPoseValid: false,
+      clearSelectedSquatSide: true,
+      clearKneeAngle: true,
+      clearSquatFeedback: true,
     );
   }
 

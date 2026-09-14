@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/workout_controller.dart';
 import '../application/workout_state.dart';
 import '../domain/hand_gesture_counter.dart';
+import '../domain/squat_analyzer.dart';
+import '../domain/squat_state_machine.dart';
 import 'widgets/pose_painter.dart';
 
 class WorkoutScreen extends ConsumerStatefulWidget {
@@ -85,6 +87,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
               const SizedBox(height: 20),
               Expanded(child: _CameraStage(state: state)),
               const SizedBox(height: 16),
+              _SquatPanel(state: state),
+              const SizedBox(height: 12),
               _HandGesturePanel(state: state),
               const SizedBox(height: 12),
               _StatusCard(state: state),
@@ -102,6 +106,83 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SquatPanel extends ConsumerWidget {
+  const _SquatPanel({required this.state});
+
+  final WorkoutState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final phaseLabel = switch (state.squatPhase) {
+      SquatPhase.unknown => '정렬 중',
+      SquatPhase.standing => '서 있음',
+      SquatPhase.descending => '내려가는 중',
+      SquatPhase.bottom => '최하단',
+      SquatPhase.ascending => '올라오는 중',
+    };
+    final sideLabel = switch (state.selectedSquatSide) {
+      SquatSide.left => '왼쪽 기준',
+      SquatSide.right => '오른쪽 기준',
+      null => '측면 자동 선택',
+    };
+    final instruction =
+        state.squatFeedback ??
+        (state.squatPoseValid
+            ? '서 있는 자세에서 시작해 충분히 앉았다 일어나세요.'
+            : '전신과 엉덩이·무릎·발목이 보이게 서주세요.');
+    final angle = state.kneeAngleDeg?.round();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101010),
+        border: Border.all(color: const Color(0x66FF2D2D)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFF2D2D),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${state.squatRepCount}',
+              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '스쿼트 · $phaseLabel · $sideLabel${angle == null ? '' : ' · $angle°'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  instruction,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: '스쿼트 카운트 초기화',
+            onPressed: () =>
+                ref.read(workoutControllerProvider.notifier).resetSquatReps(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
     );
   }
@@ -164,7 +245,7 @@ class _HandGesturePanel extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  instruction,
+                  state.handFeedback ?? instruction,
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
@@ -271,18 +352,37 @@ class _StageMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: Colors.white54),
-            const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < 160) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 28, color: Colors.white54),
+                  const SizedBox(width: 10),
+                  Flexible(child: Text(message, textAlign: TextAlign.center)),
+                ],
+              ),
+            ),
+          );
+        }
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 56, color: Colors.white54),
+                const SizedBox(height: 16),
+                Text(message, textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
