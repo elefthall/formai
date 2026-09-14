@@ -26,14 +26,14 @@ void main() {
     expect(result.phase, HandRepPhase.waitingForReopen);
   });
 
-  test('keeps the hand selected at the start of a cycle', () {
+  test('continues when handedness classification flips during a cycle', () {
     final counter = HandGestureCounter();
 
     _repeat(counter, side: HandSide.left, pose: HandPose.open);
     _repeat(counter, side: HandSide.right, pose: HandPose.closed);
     final result = _repeat(counter, side: HandSide.right, pose: HandPose.open);
 
-    expect(result.repCount, 0);
+    expect(result.repCount, 1);
     expect(result.activeSide, HandSide.left);
   });
 

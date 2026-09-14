@@ -45,7 +45,9 @@ class WorkoutController extends Notifier<WorkoutState> {
   late CameraService _cameraService;
   late PoseDetectionService _poseService;
   late HandDetectionService _handService;
-  final HandGestureCounter _handGestureCounter = HandGestureCounter();
+  final HandGestureCounter _handGestureCounter = HandGestureCounter(
+    requiredStableFrames: 2,
+  );
   final SquatAnalyzer _squatAnalyzer = SquatAnalyzer();
 
   @override
@@ -149,8 +151,12 @@ class WorkoutController extends Notifier<WorkoutState> {
 
   Future<void> _processFrame(CameraFrame frame) async {
     try {
-      final poseFrame = await _poseService.process(frame);
-      final handObservations = await _handService.process(frame);
+      // Start both independent on-device models before awaiting either result.
+      // This keeps total frame latency near the slower model instead of the sum.
+      final poseFuture = _poseService.process(frame);
+      final handFuture = _handService.process(frame);
+      final poseFrame = await poseFuture;
+      final handObservations = await handFuture;
       final gesture = _handGestureCounter.update(
         handObservations,
         timestampMs: frame.timestamp.millisecondsSinceEpoch,

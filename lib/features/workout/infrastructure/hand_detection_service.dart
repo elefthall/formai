@@ -15,11 +15,11 @@ class LiteRtHandDetectionService implements HandDetectionService {
   @override
   Future<void> initialize() async {
     _detector ??= await hand_detection.HandDetector.create(
-      maxDetections: 2,
-      minLandmarkScore: 0.5,
+      maxDetections: 1,
+      minLandmarkScore: 0.35,
       enableTracking: true,
       enableGestures: true,
-      gestureMinConfidence: 0.65,
+      gestureMinConfidence: 0.5,
     );
   }
 
@@ -42,7 +42,7 @@ class LiteRtHandDetectionService implements HandDetectionService {
     final hands = await detector.detectFromCameraImage(
       sourceImage,
       rotation: rotation,
-      maxDim: 640,
+      maxDim: 384,
     );
     return hands.map(_mapGesture).whereType<HandGestureObservation>().toList();
   }

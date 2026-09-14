@@ -102,10 +102,7 @@ class HandGestureCounter {
     List<HandGestureObservation> observations,
   ) {
     final supported =
-        observations
-            .where((item) => item.pose != HandPose.unknown)
-            .where((item) => _activeSide == null || item.side == _activeSide)
-            .toList()
+        observations.where((item) => item.pose != HandPose.unknown).toList()
           ..sort((a, b) => b.confidence.compareTo(a.confidence));
     return supported.firstOrNull;
   }
