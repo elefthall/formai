@@ -15,6 +15,7 @@ class WorkoutState {
     this.handRepCount = 0,
     this.handPose = HandPose.unknown,
     this.handRepPhase = HandRepPhase.waitingForOpen,
+    this.activeHandSide,
   });
 
   const WorkoutState.idle() : this(phase: WorkoutCameraPhase.idle);
@@ -27,6 +28,7 @@ class WorkoutState {
   final int handRepCount;
   final HandPose handPose;
   final HandRepPhase handRepPhase;
+  final HandSide? activeHandSide;
 
   bool get isStreaming => phase == WorkoutCameraPhase.streaming;
 
@@ -41,6 +43,8 @@ class WorkoutState {
     int? handRepCount,
     HandPose? handPose,
     HandRepPhase? handRepPhase,
+    HandSide? activeHandSide,
+    bool clearActiveHandSide = false,
   }) {
     return WorkoutState(
       phase: phase ?? this.phase,
@@ -51,6 +55,9 @@ class WorkoutState {
       handRepCount: handRepCount ?? this.handRepCount,
       handPose: handPose ?? this.handPose,
       handRepPhase: handRepPhase ?? this.handRepPhase,
+      activeHandSide: clearActiveHandSide
+          ? null
+          : activeHandSide ?? this.activeHandSide,
     );
   }
 }

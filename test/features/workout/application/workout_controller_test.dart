@@ -7,8 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:form_ai/features/workout/application/workout_controller.dart';
 import 'package:form_ai/features/workout/application/workout_state.dart';
 import 'package:form_ai/features/workout/domain/pose_frame.dart';
+import 'package:form_ai/features/workout/domain/hand_gesture_counter.dart';
 import 'package:form_ai/features/workout/infrastructure/camera_frame.dart';
 import 'package:form_ai/features/workout/infrastructure/camera_service.dart';
+import 'package:form_ai/features/workout/infrastructure/hand_detection_service.dart';
 import 'package:form_ai/features/workout/infrastructure/pose_detection_service.dart';
 
 void main() {
@@ -19,6 +21,9 @@ void main() {
       overrides: [
         cameraServiceProvider.overrideWithValue(camera),
         poseDetectionServiceProvider.overrideWithValue(pose),
+        handDetectionServiceProvider.overrideWithValue(
+          _FakeHandDetectionService(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -48,6 +53,9 @@ void main() {
       overrides: [
         cameraServiceProvider.overrideWithValue(camera),
         poseDetectionServiceProvider.overrideWithValue(pose),
+        handDetectionServiceProvider.overrideWithValue(
+          _FakeHandDetectionService(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -72,6 +80,9 @@ void main() {
       overrides: [
         cameraServiceProvider.overrideWithValue(camera),
         poseDetectionServiceProvider.overrideWithValue(pose),
+        handDetectionServiceProvider.overrideWithValue(
+          _FakeHandDetectionService(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -190,4 +201,15 @@ class _FakePoseDetectionService implements PoseDetectionService {
   Future<void> close() async {
     closeCallCount++;
   }
+}
+
+class _FakeHandDetectionService implements HandDetectionService {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<List<HandGestureObservation>> process(CameraFrame frame) async => [];
+
+  @override
+  Future<void> close() async {}
 }

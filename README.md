@@ -70,6 +70,7 @@ Supabase, 인증, 라우팅, 로컬 저장소는 아직 구현하지 않았습�
 ## Setup
 
 ```bash
+brew install cmake # macOS: Hand Landmarker native asset build prerequisite
 flutter pub get
 flutter run
 ```

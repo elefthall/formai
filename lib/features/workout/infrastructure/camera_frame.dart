@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
 
 class CameraFrame {
   const CameraFrame({
@@ -12,6 +12,7 @@ class CameraFrame {
     required this.isFrontCamera,
     required this.isIos,
     required this.timestamp,
+    this.sourceImage,
   });
 
   final Uint8List bytes;
@@ -24,4 +25,12 @@ class CameraFrame {
   final bool isFrontCamera;
   final bool isIos;
   final DateTime timestamp;
+  final Object? sourceImage;
+
+  DeviceOrientation get deviceOrientation => switch (deviceOrientationDegrees) {
+    90 => DeviceOrientation.landscapeLeft,
+    180 => DeviceOrientation.portraitDown,
+    270 => DeviceOrientation.landscapeRight,
+    _ => DeviceOrientation.portraitUp,
+  };
 }

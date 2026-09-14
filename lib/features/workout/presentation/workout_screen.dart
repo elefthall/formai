@@ -115,14 +115,20 @@ class _HandGesturePanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final instruction = switch (state.handRepPhase) {
-      HandRepPhase.waitingForOpen => '오른손을 카메라 쪽으로 펼쳐주세요',
-      HandRepPhase.waitingForClose => '오른손 주먹을 쥐어주세요',
-      HandRepPhase.waitingForReopen => '오른손을 다시 펼치면 1회 완료',
+      HandRepPhase.waitingForOpen => '왼손 또는 오른손을 카메라 쪽으로 펼쳐주세요',
+      HandRepPhase.waitingForClose => '같은 손으로 주먹을 쥐어주세요',
+      HandRepPhase.waitingForReopen => '같은 손을 다시 펼치면 1회 완료',
     };
     final poseLabel = switch (state.handPose) {
       HandPose.unknown => '손 확인 중',
       HandPose.open => '펼침',
       HandPose.closed => '주먹',
+    };
+    final sideLabel = switch (state.activeHandSide) {
+      HandSide.left => '왼손',
+      HandSide.right => '오른손',
+      HandSide.unknown => '감지된 손',
+      null => '좌우 자동',
     };
 
     return Container(
@@ -153,7 +159,7 @@ class _HandGesturePanel extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '손 제스처 테스트 · $poseLabel',
+                  '손 제스처 테스트 · $sideLabel · $poseLabel',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),

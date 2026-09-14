@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../infrastructure/camera_frame.dart';
 import '../domain/hand_gesture_counter.dart';
 import '../infrastructure/camera_service.dart';
+import '../infrastructure/hand_detection_service.dart';
 import '../infrastructure/ml_kit_pose_detection_service.dart';
 import '../infrastructure/pose_detection_service.dart';
 import 'workout_state.dart';
@@ -23,6 +24,12 @@ final poseDetectionServiceProvider = Provider<PoseDetectionService>((ref) {
   return service;
 });
 
+final handDetectionServiceProvider = Provider<HandDetectionService>((ref) {
+  final service = LiteRtHandDetectionService();
+  ref.onDispose(() => unawaited(service.close()));
+  return service;
+});
+
 final workoutControllerProvider =
     NotifierProvider<WorkoutController, WorkoutState>(WorkoutController.new);
 
@@ -35,12 +42,14 @@ class WorkoutController extends Notifier<WorkoutState> {
   Future<void> _pendingOperation = Future<void>.value();
   late CameraService _cameraService;
   late PoseDetectionService _poseService;
+  late HandDetectionService _handService;
   final HandGestureCounter _handGestureCounter = HandGestureCounter();
 
   @override
   WorkoutState build() {
     _cameraService = ref.watch(cameraServiceProvider);
     _poseService = ref.watch(poseDetectionServiceProvider);
+    _handService = ref.watch(handDetectionServiceProvider);
     ref.onDispose(() {
       unawaited(_releaseResources());
     });
@@ -61,6 +70,7 @@ class WorkoutController extends Notifier<WorkoutState> {
     try {
       await _cameraService.initialize();
       await _poseService.initialize();
+      await _handService.initialize();
       if (!ref.mounted) {
         await _releaseResources();
         return;
@@ -135,21 +145,29 @@ class WorkoutController extends Notifier<WorkoutState> {
   Future<void> _processFrame(CameraFrame frame) async {
     try {
       final poseFrame = await _poseService.process(frame);
+      final handObservations = await _handService.process(frame);
+      final gesture = _handGestureCounter.update(handObservations);
       if (!ref.mounted) return;
       if (state.phase != WorkoutCameraPhase.streaming) return;
       if (poseFrame == null) {
-        state = state.copyWith(clearPoseFrame: true);
+        state = state.copyWith(
+          clearPoseFrame: true,
+          handRepCount: gesture.repCount,
+          handPose: gesture.pose,
+          handRepPhase: gesture.phase,
+          activeHandSide: gesture.activeSide,
+        );
       } else {
-        final gesture = _handGestureCounter.update(poseFrame);
         state = state.copyWith(
           poseFrame: poseFrame,
           handRepCount: gesture.repCount,
           handPose: gesture.pose,
           handRepPhase: gesture.phase,
+          activeHandSide: gesture.activeSide,
         );
       }
     } catch (error, stackTrace) {
-      debugPrint('Pose frame processing failed: $error');
+      debugPrint('Vision frame processing failed: $error');
       debugPrintStack(stackTrace: stackTrace);
       if (ref.mounted && state.phase == WorkoutCameraPhase.streaming) {
         state = state.copyWith(
@@ -177,6 +195,7 @@ class WorkoutController extends Notifier<WorkoutState> {
       handRepCount: 0,
       handPose: HandPose.unknown,
       handRepPhase: HandRepPhase.waitingForOpen,
+      clearActiveHandSide: true,
     );
   }
 
@@ -189,6 +208,7 @@ class WorkoutController extends Notifier<WorkoutState> {
       // Continue releasing the remaining camera resources.
     }
     await _poseService.close();
+    await _handService.close();
     await _cameraService.dispose();
   }
 

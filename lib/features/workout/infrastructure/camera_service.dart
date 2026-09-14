@@ -41,7 +41,7 @@ class FlutterCameraService implements CameraService {
       ResolutionPreset.medium,
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
-          ? ImageFormatGroup.nv21
+          ? ImageFormatGroup.yuv420
           : ImageFormatGroup.bgra8888,
     );
     _controller = controller;
@@ -60,15 +60,15 @@ class FlutterCameraService implements CameraService {
     if (controller.value.isStreamingImages) return;
 
     await controller.startImageStream((image) {
-      if (image.planes.length != 1) return;
-      final plane = image.planes.first;
+      final mlKitFrame = _mlKitFrame(image);
+      if (mlKitFrame == null) return;
       onFrame(
         CameraFrame(
-          bytes: plane.bytes,
+          bytes: mlKitFrame.bytes,
           width: image.width,
           height: image.height,
-          bytesPerRow: plane.bytesPerRow,
-          formatRaw: image.format.raw,
+          bytesPerRow: mlKitFrame.bytesPerRow,
+          formatRaw: mlKitFrame.formatRaw,
           sensorOrientationDegrees: camera.sensorOrientation,
           deviceOrientationDegrees: _orientationDegrees(
             controller.value.deviceOrientation,
@@ -76,6 +76,7 @@ class FlutterCameraService implements CameraService {
           isFrontCamera: camera.lensDirection == CameraLensDirection.front,
           isIos: Platform.isIOS,
           timestamp: DateTime.now(),
+          sourceImage: image,
         ),
       );
     });
@@ -112,4 +113,60 @@ class FlutterCameraService implements CameraService {
       DeviceOrientation.landscapeRight => 270,
     };
   }
+
+  _MlKitFrame? _mlKitFrame(CameraImage image) {
+    if (Platform.isIOS) {
+      if (image.planes.length != 1) return null;
+      final plane = image.planes.first;
+      return _MlKitFrame(
+        bytes: plane.bytes,
+        bytesPerRow: plane.bytesPerRow,
+        formatRaw: image.format.raw,
+      );
+    }
+    if (image.planes.length != 3) return null;
+    return _packYuv420AsNv21(image);
+  }
+
+  _MlKitFrame _packYuv420AsNv21(CameraImage image) {
+    final width = image.width;
+    final height = image.height;
+    final output = Uint8List(width * height * 3 ~/ 2);
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    var outputIndex = 0;
+    for (var row = 0; row < height; row++) {
+      final rowStart = row * yPlane.bytesPerRow;
+      output.setRange(outputIndex, outputIndex + width, yPlane.bytes, rowStart);
+      outputIndex += width;
+    }
+
+    final chromaWidth = width ~/ 2;
+    final chromaHeight = height ~/ 2;
+    final uPixelStride = uPlane.bytesPerPixel ?? 1;
+    final vPixelStride = vPlane.bytesPerPixel ?? 1;
+    for (var row = 0; row < chromaHeight; row++) {
+      for (var column = 0; column < chromaWidth; column++) {
+        output[outputIndex++] =
+            vPlane.bytes[row * vPlane.bytesPerRow + column * vPixelStride];
+        output[outputIndex++] =
+            uPlane.bytes[row * uPlane.bytesPerRow + column * uPixelStride];
+      }
+    }
+    return _MlKitFrame(bytes: output, bytesPerRow: width, formatRaw: 17);
+  }
+}
+
+class _MlKitFrame {
+  const _MlKitFrame({
+    required this.bytes,
+    required this.bytesPerRow,
+    required this.formatRaw,
+  });
+
+  final Uint8List bytes;
+  final int bytesPerRow;
+  final int formatRaw;
 }
