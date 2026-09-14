@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../infrastructure/camera_frame.dart';
+import '../domain/hand_gesture_counter.dart';
 import '../infrastructure/camera_service.dart';
 import '../infrastructure/ml_kit_pose_detection_service.dart';
 import '../infrastructure/pose_detection_service.dart';
@@ -34,6 +35,7 @@ class WorkoutController extends Notifier<WorkoutState> {
   Future<void> _pendingOperation = Future<void>.value();
   late CameraService _cameraService;
   late PoseDetectionService _poseService;
+  final HandGestureCounter _handGestureCounter = HandGestureCounter();
 
   @override
   WorkoutState build() {
@@ -135,9 +137,17 @@ class WorkoutController extends Notifier<WorkoutState> {
       final poseFrame = await _poseService.process(frame);
       if (!ref.mounted) return;
       if (state.phase != WorkoutCameraPhase.streaming) return;
-      state = poseFrame == null
-          ? state.copyWith(clearPoseFrame: true)
-          : state.copyWith(poseFrame: poseFrame);
+      if (poseFrame == null) {
+        state = state.copyWith(clearPoseFrame: true);
+      } else {
+        final gesture = _handGestureCounter.update(poseFrame);
+        state = state.copyWith(
+          poseFrame: poseFrame,
+          handRepCount: gesture.repCount,
+          handPose: gesture.pose,
+          handRepPhase: gesture.phase,
+        );
+      }
     } catch (error, stackTrace) {
       debugPrint('Pose frame processing failed: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -158,6 +168,15 @@ class WorkoutController extends Notifier<WorkoutState> {
     state = WorkoutState(
       phase: WorkoutCameraPhase.error,
       errorMessage: message,
+    );
+  }
+
+  void resetHandReps() {
+    _handGestureCounter.reset();
+    state = state.copyWith(
+      handRepCount: 0,
+      handPose: HandPose.unknown,
+      handRepPhase: HandRepPhase.waitingForOpen,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 
 import '../domain/pose_frame.dart';
+import '../domain/hand_gesture_counter.dart';
 
 enum WorkoutCameraPhase { idle, initializing, streaming, suspended, error }
 
@@ -11,6 +12,9 @@ class WorkoutState {
     this.poseFrame,
     this.errorMessage,
     this.droppedFrameCount = 0,
+    this.handRepCount = 0,
+    this.handPose = HandPose.unknown,
+    this.handRepPhase = HandRepPhase.waitingForOpen,
   });
 
   const WorkoutState.idle() : this(phase: WorkoutCameraPhase.idle);
@@ -20,6 +24,9 @@ class WorkoutState {
   final PoseFrame? poseFrame;
   final String? errorMessage;
   final int droppedFrameCount;
+  final int handRepCount;
+  final HandPose handPose;
+  final HandRepPhase handRepPhase;
 
   bool get isStreaming => phase == WorkoutCameraPhase.streaming;
 
@@ -31,6 +38,9 @@ class WorkoutState {
     String? errorMessage,
     bool clearError = false,
     int? droppedFrameCount,
+    int? handRepCount,
+    HandPose? handPose,
+    HandRepPhase? handRepPhase,
   }) {
     return WorkoutState(
       phase: phase ?? this.phase,
@@ -38,6 +48,9 @@ class WorkoutState {
       poseFrame: clearPoseFrame ? null : poseFrame ?? this.poseFrame,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       droppedFrameCount: droppedFrameCount ?? this.droppedFrameCount,
+      handRepCount: handRepCount ?? this.handRepCount,
+      handPose: handPose ?? this.handPose,
+      handRepPhase: handRepPhase ?? this.handRepPhase,
     );
   }
 }

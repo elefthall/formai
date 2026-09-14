@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/workout_controller.dart';
 import '../application/workout_state.dart';
+import '../domain/hand_gesture_counter.dart';
 import 'widgets/pose_painter.dart';
 
 class WorkoutScreen extends ConsumerStatefulWidget {
@@ -84,6 +85,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
               const SizedBox(height: 20),
               Expanded(child: _CameraStage(state: state)),
               const SizedBox(height: 16),
+              _HandGesturePanel(state: state),
+              const SizedBox(height: 12),
               _StatusCard(state: state),
               const SizedBox(height: 16),
               if (state.phase == WorkoutCameraPhase.error)
@@ -99,6 +102,75 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HandGesturePanel extends ConsumerWidget {
+  const _HandGesturePanel({required this.state});
+
+  final WorkoutState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final instruction = switch (state.handRepPhase) {
+      HandRepPhase.waitingForOpen => '오른손을 카메라 쪽으로 펼쳐주세요',
+      HandRepPhase.waitingForClose => '오른손 주먹을 쥐어주세요',
+      HandRepPhase.waitingForReopen => '오른손을 다시 펼치면 1회 완료',
+    };
+    final poseLabel = switch (state.handPose) {
+      HandPose.unknown => '손 확인 중',
+      HandPose.open => '펼침',
+      HandPose.closed => '주먹',
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101010),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFF2D2D),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${state.handRepCount}',
+              style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '손 제스처 테스트 · $poseLabel',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  instruction,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: '손 카운트 초기화',
+            onPressed: () =>
+                ref.read(workoutControllerProvider.notifier).resetHandReps(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
     );
   }
