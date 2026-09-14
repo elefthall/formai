@@ -55,6 +55,18 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(workoutControllerProvider);
+    ref.listen<WorkoutState>(workoutControllerProvider, (previous, next) {
+      final squatFeedback = next.squatFeedback != previous?.squatFeedback
+          ? next.squatFeedback
+          : null;
+      final handFeedback = next.handFeedback != previous?.handFeedback
+          ? next.handFeedback
+          : null;
+      final message = squatFeedback ?? handFeedback;
+      if (message != null) {
+        _showFeedbackPopup(message);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -108,6 +120,41 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
         ),
       ),
     );
+  }
+
+  void _showFeedbackPopup(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.bolt, color: Color(0xFFFF2D2D)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(milliseconds: 2800),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF101010),
+          elevation: 12,
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Color(0xFFFF2D2D), width: 1.5),
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      );
   }
 }
 
